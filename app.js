@@ -56,6 +56,7 @@ const state = {
   timeLeft: START_MS,
   endAt: 0,
   lastMatchAt: 0,
+  matchSessionId: 0,
   pickStartedAt: 0,
   locked: false,
   finished: false,
@@ -1216,6 +1217,7 @@ function calculateClassificationMastery(record, elapsed) {
 function startMatch() {
   stopTimer();
   state.feature = "match";
+  state.matchSessionId += 1;
   state.pool = weightedPairs(getPool());
   if (!hasPlayableMatchPool(state.pool)) {
     state.feature = "home";
@@ -1376,6 +1378,7 @@ function selectCard(cardEl) {
 function checkSelection() {
   cancelHint();
   state.locked = true;
+  const matchSessionId = state.matchSessionId;
   const [first, second] = state.selected;
   const elapsed = performance.now() - state.pickStartedAt;
   const correct = first.dataset.pairId === second.dataset.pairId && first.dataset.side !== second.dataset.side;
@@ -1396,7 +1399,7 @@ function checkSelection() {
     first.classList.add("good");
     second.classList.add("good");
     els.feedback.textContent = `${pair.left} ↔ ${pair.right} +${points}점 +${isCombo ? COMBO_BONUS_SECONDS : MATCH_BONUS_SECONDS}초`;
-    setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid]), 220);
+    setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid], matchSessionId), 220);
   } else {
     playMatchSound("wrong");
     playImpact("wrong", -50);
@@ -1409,7 +1412,7 @@ function checkSelection() {
     first.classList.add("bad");
     second.classList.add("bad");
     els.feedback.textContent = "직접 연결이 아닙니다. -50점";
-    setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid]), 360);
+    setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid], matchSessionId), 360);
   }
 
   saveRecords();
@@ -1417,7 +1420,8 @@ function checkSelection() {
   updateHud();
 }
 
-function refillMatchedCards(uidList) {
+function refillMatchedCards(uidList, matchSessionId = state.matchSessionId) {
+  if (state.feature !== "match" || state.finished || matchSessionId !== state.matchSessionId) return;
   const removedIndexes = uidList.map(uid => state.boardCards.findIndex(card => card.uid === uid)).filter(index => index >= 0);
   for (const index of removedIndexes) state.boardCards[index] = null;
   const remaining = state.boardCards.filter(Boolean);
