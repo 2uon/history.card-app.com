@@ -1312,12 +1312,29 @@ function pickRandomSingle(board, blockedPairIds = []) {
 }
 
 function makeCard(pair, side) {
+  const term = side === "left" ? pair.left : pair.right;
   return {
     uid: `${pair.id}-${side}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     pairId: pair.id,
     side,
-    text: side === "left" ? pair.left : pair.right
+    term,
+    text: side === "left" ? pair.left : buildMatchClue(pair)
   };
+}
+
+function buildMatchClue(pair) {
+  if (pair.clue) return pair.clue;
+  const compactTerm = [...pair.left].filter(char => !/\s/.test(char));
+  const numericPrefix = /^\d/.test(compactTerm.join("")) ? "제?" : "";
+  const pattern = numericPrefix + compactTerm.map(char => escapeRegExp(char)).join("\\s*");
+  const clue = pair.explanation.replace(new RegExp(pattern), "______");
+  return clue === pair.explanation
+    ? `______과 연결되는 핵심 단서는 ${pair.right}이다.`
+    : clue;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renderBoard() {
@@ -1331,13 +1348,16 @@ function renderBoard() {
 function createCardElement(card, slotIndex, isInitial = false) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "card";
+  const cardType = card.side === "left" ? "concept-card" : "clue-card";
+  const density = card.side === "right" && card.text.length >= 42 ? " dense" : "";
+  button.className = `card ${cardType}${density}`;
   button.dataset.uid = card.uid;
   button.dataset.pairId = card.pairId;
   button.dataset.side = card.side;
   button.dataset.slot = String(slotIndex);
   button.style.setProperty("--enter-delay", isInitial ? `${slotIndex * 22}ms` : "0ms");
-  button.textContent = card.text;
+  button.setAttribute("aria-label", card.side === "left" ? `핵심 개념 ${card.text}` : `역사 단서 ${card.text}`);
+  button.innerHTML = `<small aria-hidden="true">${card.side === "left" ? "핵심 개념" : "역사 단서"}</small><span>${escapeHtml(card.text)}</span>`;
   button.addEventListener("click", () => selectCard(button));
   return button;
 }
@@ -1398,7 +1418,7 @@ function checkSelection() {
     updateRecord(first.dataset.pairId, true, elapsed, elapsed <= COMBO_WINDOW_MS ? "instant" : "sure");
     first.classList.add("good");
     second.classList.add("good");
-    els.feedback.textContent = `${pair.left} ↔ ${pair.right} +${points}점 +${isCombo ? COMBO_BONUS_SECONDS : MATCH_BONUS_SECONDS}초`;
+    els.feedback.textContent = `정답 · ${pair.explanation} +${points}점 · +${bonusSeconds}초`;
     setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid], matchSessionId), 220);
   } else {
     playMatchSound("wrong");
@@ -1411,7 +1431,12 @@ function checkSelection() {
     updateRecord(second.dataset.pairId, false, elapsed, "wrong");
     first.classList.add("bad");
     second.classList.add("bad");
-    els.feedback.textContent = "직접 연결이 아닙니다. -50점";
+    const secondPair = PAIRS.find(item => item.id === second.dataset.pairId);
+    const corrections = [pair, secondPair]
+      .filter((item, index, items) => item && items.findIndex(candidate => candidate?.id === item.id) === index)
+      .map(item => `${item.left} ↔ ${item.right}`)
+      .join(" / ");
+    els.feedback.textContent = `오답 · 정답 연결: ${corrections} · -50점`;
     setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid], matchSessionId), 360);
   }
 
@@ -1486,7 +1511,9 @@ function showMatchHint() {
   const hintCard = target || playable[0];
   const element = els.board.querySelector(`[data-uid="${CSS.escape(hintCard.uid)}"]`);
   element?.classList.add("hint-target");
-  els.feedback.textContent = `힌트 카드: ‘${hintCard.text}’. 직접 연결되는 카드를 찾아보세요.`;
+  els.feedback.textContent = hintCard.side === "left"
+    ? `힌트 개념: ‘${hintCard.text}’. 연결되는 역사 단서를 찾으세요.`
+    : "힌트: 강조된 역사 단서와 연결되는 핵심 개념을 찾으세요.";
 }
 
 function showOrderHint() {
@@ -1543,10 +1570,10 @@ function pickAnyCard(existing) {
 }
 
 function isCardCompatibleWithBoard(existing, candidate) {
-  const candidateTerm = normalize(candidate.text);
-  if (existing.some(card => normalize(card.text) === candidateTerm)) return false;
+  const candidateTerm = normalize(candidate.term);
+  if (existing.some(card => normalize(card.term) === candidateTerm)) return false;
   return existing.every(card => {
-    if (!areDirectlyRelated(card.text, candidate.text)) return true;
+    if (!areDirectlyRelated(card.term, candidate.term)) return true;
     return card.pairId === candidate.pairId && card.side !== candidate.side;
   });
 }
@@ -1565,9 +1592,9 @@ function findAmbiguousRelations(cards) {
     for (let j = i + 1; j < cards.length; j += 1) {
       const first = cards[i];
       const second = cards[j];
-      if (!areDirectlyRelated(first.text, second.text)) continue;
+      if (!areDirectlyRelated(first.term, second.term)) continue;
       if (first.pairId === second.pairId && first.side !== second.side) continue;
-      ambiguous.push(`${first.text} ↔ ${second.text}`);
+      ambiguous.push(`${first.term} ↔ ${second.term}`);
     }
   }
   return ambiguous;
@@ -1575,7 +1602,7 @@ function findAmbiguousRelations(cards) {
 
 function inspectBoard(cards) {
   const validCards = cards.filter(Boolean);
-  const terms = validCards.map(card => normalize(card.text));
+  const terms = validCards.map(card => normalize(card.term));
   return {
     cardCount: validCards.length,
     pairCount: countPairsOnBoard(validCards),

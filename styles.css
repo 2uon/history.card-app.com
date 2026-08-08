@@ -724,6 +724,33 @@ button:active { transform: scale(.98); }
   animation-delay: var(--enter-delay);
 }
 
+.card > small {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.card > span {
+  display: block;
+  max-width: 100%;
+}
+
+.card.clue-card {
+  padding: 20px 9px 9px;
+  font-size: clamp(11px, 3.2vw, 13px);
+  font-weight: 720;
+  line-height: 1.42;
+  text-align: left;
+}
+
+.card.clue-card.dense {
+  font-size: clamp(10px, 2.9vw, 12px);
+  line-height: 1.35;
+}
+
 @keyframes cardEnter {
   from { opacity: 0; transform: scale(.9) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
