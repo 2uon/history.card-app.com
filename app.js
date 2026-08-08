@@ -2,7 +2,6 @@ const STORAGE_KEY = "historyMatchingRecords.v2";
 const THEME_KEY = "historyMatchingTheme.v1";
 const LEADERBOARD_KEY = "historyMatchingLeaderboard.v1";
 const ORDER_STORAGE_KEY = "historyOrderingRecords.v1";
-const CLASSIFICATION_STORAGE_KEY = "historyClassificationRecords.v1";
 const CURRICULUM_SET_KEY = "historyMatchingCurriculumSet.v1";
 const LEADERBOARD_VISIBLE_LIMIT = 10;
 const BOARD_SIZE = 8;
@@ -31,7 +30,6 @@ let orderDrag = null;
 const state = {
   records: loadRecords(),
   orderRecords: loadOrderRecords(),
-  classificationRecords: loadClassificationRecords(),
   leaderboard: loadLeaderboard(),
   feature: "home",
   pool: [],
@@ -529,56 +527,6 @@ function getOrderRecord(setId) {
   return state.orderRecords[setId];
 }
 
-function loadClassificationRecords() {
-  try {
-    return sanitizeClassificationRecords(JSON.parse(localStorage.getItem(CLASSIFICATION_STORAGE_KEY)) || {});
-  } catch {
-    return {};
-  }
-}
-
-function getClassificationCardId(set, card) {
-  return `${set.id}::${card.id || card.term}`;
-}
-
-function sanitizeClassificationRecords(records) {
-  if (!records || typeof records !== "object" || Array.isArray(records)) return {};
-  const validIds = new Set(CLASSIFICATION_SETS.flatMap(set => set.cards.map(card => getClassificationCardId(set, card))));
-  const sanitized = {};
-  for (const [cardId, record] of Object.entries(records)) {
-    if (!validIds.has(cardId) || !record || typeof record !== "object" || Array.isArray(record)) continue;
-    const attempts = Math.max(0, Math.round(Number(record.attempts) || 0));
-    sanitized[cardId] = {
-      attempts,
-      correct: Math.min(attempts, Math.max(0, Math.round(Number(record.correct) || 0))),
-      wrong: Math.max(0, Math.round(Number(record.wrong) || 0)),
-      streak: Math.max(0, Math.round(Number(record.streak) || 0)),
-      mastery: Math.max(0, Math.min(100, Math.round(Number(record.mastery) || 0))),
-      lastSeen: Number.isFinite(Date.parse(record.lastSeen)) ? new Date(record.lastSeen).toISOString() : null
-    };
-  }
-  return sanitized;
-}
-
-function saveClassificationRecords() {
-  localStorage.setItem(CLASSIFICATION_STORAGE_KEY, JSON.stringify(state.classificationRecords));
-}
-
-function getClassificationRecord(set, card) {
-  const cardId = getClassificationCardId(set, card);
-  if (!state.classificationRecords[cardId]) {
-    state.classificationRecords[cardId] = {
-      attempts: 0,
-      correct: 0,
-      wrong: 0,
-      streak: 0,
-      mastery: 0,
-      lastSeen: null
-    };
-  }
-  return state.classificationRecords[cardId];
-}
-
 function loadLeaderboard() {
   try {
     const parsed = JSON.parse(localStorage.getItem(LEADERBOARD_KEY));
@@ -648,22 +596,7 @@ function getOrderPool() {
 }
 
 function getClassificationPool() {
-  let sets = CLASSIFICATION_SETS.slice();
-  if (els.era.value !== "all") sets = sets.filter(set => set.era === els.era.value);
-  return sets.map(set => {
-    let cards = set.cards.slice();
-    if (els.priority.value === "SA") cards = cards.filter(card => ["S", "A"].includes(card.priority));
-    if (els.priority.value === "S") cards = cards.filter(card => card.priority === "S");
-    if (els.priority.value === "ABC") cards = cards.filter(card => ["A", "B", "C"].includes(card.priority));
-    if (els.mode.value === "wrong") {
-      const weak = cards.filter(card => {
-        const record = state.classificationRecords[getClassificationCardId(set, card)];
-        return record && (record.wrong > 0 || record.mastery < 70);
-      });
-      if (weak.length) cards = weak;
-    }
-    return { ...set, cards };
-  }).filter(set => set.cards.length > 0);
+  return getPool();
 }
 
 function updateHomeSummary() {
@@ -674,15 +607,13 @@ function updateHomeSummary() {
   els.era.disabled = Boolean(getSelectedCurriculumSet());
   els.totalPairs.textContent = pool.length;
   els.weakPairs.textContent = pool.filter(isWeakPair).length;
-  els.savedCount.textContent = Object.keys(state.records).length
-    + Object.keys(state.orderRecords).length
-    + Object.keys(state.classificationRecords).length;
+  els.savedCount.textContent = Object.keys(state.records).length + Object.keys(state.orderRecords).length;
   els.orderSetCount.textContent = orderPool.length;
-  els.classificationCardCount.textContent = classificationPool.reduce((sum, set) => sum + set.cards.length, 0);
+  els.classificationCardCount.textContent = classificationPool.length;
   els.startStudyBtn.disabled = pool.length === 0;
   els.startMatchBtn.disabled = !playableMatch;
   els.startOrderBtn.disabled = orderPool.length === 0;
-  els.startClassificationBtn.disabled = classificationPool.length === 0;
+  els.startClassificationBtn.disabled = new Set(classificationPool.map(pair => normalize(pair.left))).size < 2;
   els.rangeNotice.classList.toggle("hidden", pool.length > 0 && playableMatch);
   if (!pool.length) {
     els.rangeNotice.textContent = "선택한 조건에 해당하는 학습 카드가 없습니다.";
@@ -795,15 +726,14 @@ function startStudy() {
 function renderStudyCard() {
   if (!state.studyQueue.length) state.studyQueue = shuffle(state.pool).slice();
   const pair = state.studyQueue[state.studyIndex % state.studyQueue.length];
-  const frontIsLeft = state.studyIndex % 2 === 0;
-  const front = frontIsLeft ? pair.left : buildMatchClue(pair);
+  const front = buildMatchClue(pair);
   els.studyCard.classList.toggle("revealed", state.studyFlipped);
-  els.studyCard.classList.toggle("clue-front", !state.studyFlipped && !frontIsLeft);
-  els.studySide.textContent = state.studyFlipped ? "정답 연결" : frontIsLeft ? "핵심 개념" : "역사 단서";
+  els.studyCard.classList.toggle("clue-front", !state.studyFlipped);
+  els.studySide.textContent = state.studyFlipped ? "정답 연결" : "역사 단서";
   els.studyTerm.textContent = state.studyFlipped ? `${pair.left} ↔ ${pair.right}` : front;
   els.studyMeta.textContent = state.studyFlipped
     ? pair.explanation
-    : frontIsLeft ? "연결되는 역사 단서와 근거 문장을 떠올리세요." : "빈칸에 들어갈 핵심 개념을 떠올리세요.";
+    : "빈칸에 들어갈 핵심 개념을 떠올리세요.";
   els.studyCard.setAttribute("aria-label", state.studyFlipped ? `${pair.left}와 ${pair.right}의 관계. ${pair.explanation}` : `${front}, 정답 확인하기`);
   els.flipBtn.textContent = state.studyFlipped ? "문제 다시 보기" : "정답 확인";
   els.knowBtn.disabled = !state.studyFlipped;
@@ -1141,11 +1071,10 @@ function nextOrderRound() {
 function startClassification() {
   stopTimer();
   state.matchSessionId += 1;
-  state.classificationPool = getClassificationPool();
-  const cardCount = state.classificationPool.reduce((sum, set) => sum + set.cards.length, 0);
-  if (!cardCount) {
+  state.classificationPool = weightedPairs(getClassificationPool());
+  if (new Set(state.classificationPool.map(pair => normalize(pair.left))).size < 2) {
     state.feature = "home";
-    showNotice("선택한 범위에 분류 카드가 없습니다.", "error");
+    showNotice("분류 선택지를 만들 개념이 부족합니다.", "error");
     updateHomeSummary();
     return;
   }
@@ -1166,8 +1095,9 @@ function startClassification() {
   state.finished = false;
   matchWarningSecond = -1;
   showGame();
-  els.sessionLabel.textContent = "개념 분류";
-  els.sessionTitle.textContent = "1분 분류 훈련";
+  const curriculumSet = getSelectedCurriculumSet();
+  els.sessionLabel.textContent = curriculumSet ? `${curriculumSet.number}세트 · 분류 훈련` : "개념 분류";
+  els.sessionTitle.textContent = curriculumSet ? curriculumSet.title : "1분 분류 훈련";
   els.studyArea.classList.add("hidden");
   els.orderArea.classList.add("hidden");
   els.board.classList.add("hidden");
@@ -1175,8 +1105,8 @@ function startClassification() {
   els.classificationArea.classList.remove("hidden");
   els.timerLabel.textContent = "남은 시간";
   els.timerBox.classList.remove("danger", "urgent");
-  els.feedback.textContent = "두 역사 단서를 함께 보고 정확한 대상을 고르세요.";
-  els.modeHint.textContent = "비슷한 왕·단체·사건 사이의 결정적 차이를 훈련합니다.";
+  els.feedback.textContent = "역사 단서와 직접 연결되는 핵심 개념을 고르세요.";
+  els.modeHint.textContent = "카드 학습과 매칭에 나온 동일한 관계가 출제됩니다.";
   renderClassificationQuestion();
   updateHud();
   ensureAudioContext();
@@ -1185,43 +1115,58 @@ function startClassification() {
 }
 
 function buildClassificationQueue() {
-  return state.classificationPool
-    .flatMap(set => set.cards.map(card => ({ set, card })))
-    .sort((a, b) => getClassificationWeight(b) - getClassificationWeight(a));
+  return state.classificationPool.slice().sort((a, b) => getClassificationWeight(b) - getClassificationWeight(a));
 }
 
-function getClassificationWeight(question) {
-  const record = state.classificationRecords[getClassificationCardId(question.set, question.card)];
-  const priority = question.card.priority === "S" ? 65 : 40;
+function getClassificationWeight(pair) {
+  const record = state.records[pair.id];
+  const priority = pair.priority === "S" ? 65 : 40;
   const weak = record ? Math.max(0, 100 - record.mastery) + record.wrong * 18 : 35;
   return priority + weak + Math.random() * 8;
 }
 
-function buildClassificationClue(card) {
-  if (card.clue) return card.clue;
-  const compactAnswer = [...card.answer].filter(char => !/\s/.test(char));
-  const pattern = compactAnswer.map(char => escapeRegExp(char)).join("\\s*");
-  return card.note.replace(new RegExp(pattern, "g"), "______");
+function buildClassificationOptions(pair) {
+  const answerKey = normalize(pair.left);
+  const seen = new Set([answerKey]);
+  const candidates = shuffle(state.classificationPool)
+    .filter(candidate => {
+      const key = normalize(candidate.left);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map(candidate => ({
+      label: candidate.left,
+      similarity: (candidate.era === pair.era ? 4 : 0)
+        + (candidate.category === pair.category ? 3 : 0)
+        + (candidate.category.split("-")[0] === pair.category.split("-")[0] ? 2 : 0)
+        + Math.random()
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 3)
+    .map(candidate => candidate.label);
+  return shuffle([pair.left, ...candidates]);
 }
 
 function renderClassificationQuestion(playCue = false) {
   cancelHint();
   if (!state.classificationQueue.length) state.classificationQueue = buildClassificationQueue();
-  state.classificationCurrent = state.classificationQueue.shift();
+  const pair = state.classificationQueue.shift();
+  state.classificationCurrent = { pair, options: buildClassificationOptions(pair) };
   state.classificationCount += 1;
   state.locked = false;
   state.pickStartedAt = performance.now();
-  const { set, card } = state.classificationCurrent;
-  els.classificationProgress.textContent = `${state.classificationCount}번째 개념`;
-  els.classificationTitle.textContent = set.title;
-  els.classificationPrompt.textContent = set.prompt;
-  els.classificationTerm.textContent = card.term;
-  els.classificationClue.textContent = buildClassificationClue(card);
-  els.classificationMeta.textContent = `${set.era} · ${card.priority}`;
-  els.classificationCard.className = `classification-card${card.clue ? " contextual" : ""}`;
+  els.classificationProgress.textContent = `${state.classificationCount}번째 관계`;
+  els.classificationTitle.textContent = `${pair.era} · ${pair.category}`;
+  els.classificationPrompt.textContent = "이 역사 단서와 직접 연결되는 개념은?";
+  els.classificationTerm.textContent = buildMatchClue(pair);
+  els.classificationClue.textContent = "";
+  els.classificationClue.classList.add("hidden");
+  els.classificationMeta.textContent = `${pair.era} · ${pair.priority}`;
+  els.classificationCard.className = "classification-card contextual pair-source";
   els.classificationNote.classList.add("hidden");
   els.classificationNote.textContent = "";
-  els.classificationTargets.innerHTML = set.labels.map(label => (
+  els.classificationTargets.innerHTML = state.classificationCurrent.options.map(label => (
     `<button type="button" data-classification-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`
   )).join("");
   if (playCue) playMatchSound("next");
@@ -1233,18 +1178,15 @@ function handleClassificationAnswer(event) {
   if (!button || state.feature !== "classify" || state.locked || state.timeLeft <= 0) return;
   cancelHint();
   state.locked = true;
-  const { set, card } = state.classificationCurrent;
+  const { pair } = state.classificationCurrent;
   const selected = button.dataset.classificationLabel;
-  const correct = selected === card.answer;
+  const correct = selected === pair.left;
   const now = performance.now();
   const elapsed = now - state.pickStartedAt;
-  const record = getClassificationRecord(set, card);
-  record.attempts += 1;
-  record.lastSeen = new Date().toISOString();
 
   for (const target of els.classificationTargets.querySelectorAll("button")) {
     target.disabled = true;
-    if (target.dataset.classificationLabel === card.answer) target.classList.add("correct-target");
+    if (target.dataset.classificationLabel === pair.left) target.classList.add("correct-target");
   }
 
   if (correct) {
@@ -1256,10 +1198,9 @@ function handleClassificationAnswer(event) {
     const bonusSeconds = isCombo ? CLASSIFY_COMBO_BONUS_SECONDS : CLASSIFY_BONUS_SECONDS;
     state.score += points;
     state.endAt += bonusSeconds * 1000;
-    record.correct += 1;
-    record.streak += 1;
+    updateRecord(pair.id, true, elapsed, elapsed <= COMBO_WINDOW_MS ? "instant" : "sure");
     els.classificationCard.classList.add("correct");
-    els.feedback.textContent = `정답 · ${card.note} +${points}점 · +${bonusSeconds}초`;
+    els.feedback.textContent = `정답 · ${pair.explanation} +${points}점 · +${bonusSeconds}초`;
     playMatchSound(isCombo ? "combo" : "correct");
     playImpact(isCombo ? "combo" : "correct", points, bonusSeconds);
   } else {
@@ -1268,31 +1209,23 @@ function handleClassificationAnswer(event) {
     state.lastMatchAt = 0;
     state.wrong += 1;
     state.score -= 50;
-    record.wrong += 1;
-    record.streak = 0;
+    updateRecord(pair.id, false, elapsed, "wrong");
     button.classList.add("wrong-target");
     els.classificationCard.classList.add("wrong");
-    els.feedback.textContent = `정답은 ${card.answer}입니다. -50점 · -1초`;
+    els.feedback.textContent = `정답은 ${pair.left}입니다. -50점 · -1초`;
     playMatchSound("wrong");
     playImpact("wrong", -50, -WRONG_TIME_PENALTY_SECONDS);
   }
 
-  record.mastery = calculateClassificationMastery(record, elapsed);
-  saveClassificationRecords();
-  els.classificationNote.innerHTML = `<strong>${escapeHtml(card.answer)}</strong><span>${escapeHtml(card.note)}</span>`;
+  saveRecords();
+  renderWeakList();
+  els.classificationNote.innerHTML = `<strong>${escapeHtml(pair.left)} ↔ ${escapeHtml(pair.right)}</strong><span>${escapeHtml(pair.explanation)}</span>`;
   els.classificationNote.classList.remove("hidden");
   updateHud();
   updateHomeSummary();
   window.setTimeout(() => {
     if (state.feature === "classify" && !state.finished && state.timeLeft > 0) renderClassificationQuestion(true);
   }, correct ? 430 : 760);
-}
-
-function calculateClassificationMastery(record, elapsed) {
-  const accuracy = record.attempts ? record.correct / record.attempts : 0;
-  const speed = Math.max(0, Math.min(1, 1 - elapsed / 8000));
-  const streak = Math.min(record.streak, 4) / 4;
-  return Math.max(0, Math.min(100, Math.round(accuracy * 60 + speed * 25 + streak * 15 - Math.min(20, record.wrong * 4))));
 }
 
 function startMatch() {
@@ -1608,10 +1541,10 @@ function showOrderHint() {
 }
 
 function showClassificationHint() {
-  const { card } = state.classificationCurrent || {};
-  if (!card) return;
+  const { pair } = state.classificationCurrent || {};
+  if (!pair) return;
   const wrongTarget = [...els.classificationTargets.querySelectorAll("button")]
-    .find(button => button.dataset.classificationLabel !== card.answer);
+    .find(button => button.dataset.classificationLabel !== pair.left);
   if (!wrongTarget) return;
   wrongTarget.disabled = true;
   wrongTarget.classList.add("hint-eliminated");
@@ -1813,14 +1746,14 @@ function revealFinalClassificationAnswer() {
   if (!current) return;
   for (const target of els.classificationTargets.querySelectorAll("button")) {
     target.disabled = true;
-    target.classList.toggle("correct-target", target.dataset.classificationLabel === current.card.answer);
+    target.classList.toggle("correct-target", target.dataset.classificationLabel === current.pair.left);
   }
   els.classificationCard.classList.remove("wrong");
   els.classificationCard.classList.add("correct");
-  els.classificationNote.innerHTML = `<strong>${escapeHtml(current.card.answer)}</strong><span>${escapeHtml(current.card.note)}</span>`;
+  els.classificationNote.innerHTML = `<strong>${escapeHtml(current.pair.left)} ↔ ${escapeHtml(current.pair.right)}</strong><span>${escapeHtml(current.pair.explanation)}</span>`;
   els.classificationNote.classList.remove("hidden");
-  els.feedback.textContent = `시간 종료 · 마지막 정답: ${current.card.answer}`;
-  els.modeHint.textContent = current.card.note;
+  els.feedback.textContent = `시간 종료 · 마지막 정답: ${current.pair.left}`;
+  els.modeHint.textContent = current.pair.explanation;
 }
 
 function showClassificationResult(sessionId) {
@@ -1829,7 +1762,7 @@ function showClassificationResult(sessionId) {
   els.resultView.classList.remove("hidden");
   els.resultEyebrow.textContent = "분류 훈련 종료";
   els.feedback.textContent = "시간 종료";
-  els.modeHint.textContent = "틀린 분류는 다음 게임에서 더 자주 등장합니다.";
+  els.modeHint.textContent = "틀린 관계는 카드 학습·매칭·분류에서 더 자주 등장합니다.";
   els.finalScore.textContent = `${state.score}점`;
   els.finalMatched.textContent = state.matched;
   els.leaderboardTitle.textContent = "분류 훈련 랭킹";
@@ -2048,12 +1981,11 @@ function renderWeakList() {
 
 function exportRecords() {
   const payload = JSON.stringify({
-    schemaVersion: 4,
+    schemaVersion: 5,
     app: "한능검 매치",
     exportedAt: new Date().toISOString(),
     records: state.records,
     orderRecords: state.orderRecords,
-    classificationRecords: state.classificationRecords,
     leaderboard: state.leaderboard
   }, null, 2);
   els.jsonBox.value = payload;
@@ -2085,10 +2017,6 @@ function importRecords(event) {
         state.orderRecords = sanitizeOrderRecords(parsed.orderRecords);
         saveOrderRecords();
       }
-      if (parsed.classificationRecords && typeof parsed.classificationRecords === "object" && !Array.isArray(parsed.classificationRecords)) {
-        state.classificationRecords = sanitizeClassificationRecords(parsed.classificationRecords);
-        saveClassificationRecords();
-      }
       if (Array.isArray(parsed.leaderboard)) {
         state.leaderboard = sanitizeLeaderboard(parsed.leaderboard);
         saveLeaderboard();
@@ -2111,11 +2039,9 @@ function resetRecords() {
   if (!confirm("학습 기록을 모두 지울까요?")) return;
   state.records = {};
   state.orderRecords = {};
-  state.classificationRecords = {};
   state.leaderboard = [];
   saveRecords();
   saveOrderRecords();
-  saveClassificationRecords();
   saveLeaderboard();
   updateHomeSummary();
   renderWeakList();

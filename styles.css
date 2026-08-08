@@ -1276,6 +1276,15 @@ body[data-theme="light"] .combo-badge.combo-level-4 { --combo-color: #a83f73; }
   line-height: 1.55;
 }
 
+.classification-card.pair-source {
+  min-height: 230px;
+}
+
+.classification-card.pair-source strong {
+  font-size: clamp(20px, 6vw, 28px);
+  text-align: left;
+}
+
 .classification-card p {
   max-width: 330px;
   margin: 0;
