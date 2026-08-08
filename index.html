@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f151c">
+  <meta name="description" content="한능검 심화 2급 핵심 개념을 카드 학습, 매칭, 순서 배치로 반복하는 학습 앱">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>한능검 매치 | 심화 2급 핵심 학습</title>
+  <link rel="manifest" href="manifest.webmanifest?v=3">
+  <link rel="icon" href="app-icon-v2.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css?v=17">
+</head>
+<body>
+  <main class="app">
+    <header class="product-bar">
+      <div class="product-brand" aria-label="한능검 매치">
+        <span class="product-name"><strong>한능검 매치</strong><small>2급 핵심 연결·흐름 훈련</small></span>
+      </div>
+      <div class="quick-controls" aria-label="화면 설정">
+        <button id="sfxToggle" class="icon-toggle" type="button" aria-label="효과음 끄기" aria-pressed="true" title="효과음 끄기">
+          <span class="toggle-icon" aria-hidden="true">♪</span>
+          <span id="sfxLabel">효과음</span>
+        </button>
+        <button id="themeToggle" class="icon-toggle" type="button" aria-label="라이트 모드로 전환" title="라이트 모드로 전환">
+          <span id="themeIcon" class="toggle-icon" aria-hidden="true">☀</span>
+          <span id="themeLabel">라이트</span>
+        </button>
+      </div>
+    </header>
+    <div id="effectLayer" class="effect-layer" aria-hidden="true"></div>
+    <section id="homeView" class="view home-view">
+      <header class="hero">
+        <h1>오늘의 학습</h1>
+        <p>한능검 심화 2급 · 핵심 관계와 흐름 반복</p>
+      </header>
+
+      <h2 class="section-title">학습 범위</h2>
+      <section class="setup">
+        <label class="curriculum-field">
+          카드·매칭 학습 세트
+          <select id="curriculumSetSelect">
+            <option value="all">전체 핵심 200쌍</option>
+          </select>
+        </label>
+        <label>
+          범위
+          <select id="eraSelect">
+            <option value="all">전체</option>
+            <option value="고대">고대</option>
+            <option value="고려">고려</option>
+            <option value="조선">조선</option>
+            <option value="개항기">개항기</option>
+            <option value="일제강점기">일제강점기</option>
+            <option value="현대사">현대사</option>
+            <option value="문화재">문화재</option>
+          </select>
+        </label>
+        <label>
+          우선순위
+          <select id="prioritySelect">
+            <option value="SA">S/A 핵심</option>
+            <option value="S">S만</option>
+            <option value="ABC">A/B/C 포함</option>
+            <option value="all">전체</option>
+          </select>
+        </label>
+        <label>
+          훈련 유형
+          <select id="modeSelect">
+            <option value="cram">2급 벼락치기</option>
+            <option value="king">왕-정책</option>
+            <option value="group">단체-활동</option>
+            <option value="confusion">혼동 훈련</option>
+            <option value="wrong">오답 지옥</option>
+          </select>
+        </label>
+        <label>
+          난이도
+          <select id="difficultySelect">
+            <option value="normal">보통</option>
+            <option value="easy">쉬움</option>
+            <option value="hard">어려움</option>
+          </select>
+        </label>
+      </section>
+      <p id="rangeNotice" class="range-notice hidden" role="status"></p>
+
+      <h2 class="section-title mode-title">학습 방식</h2>
+      <section class="start-grid">
+        <button id="startStudyBtn" class="start-card" type="button">
+          <span class="start-card-copy">
+            <strong>카드 학습</strong>
+            <span>개념과 연결어를 한 장씩 확인</span>
+          </span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </button>
+        <button id="startMatchBtn" class="start-card" type="button">
+          <span class="start-card-copy">
+            <strong>매칭 훈련</strong>
+            <span>8장에서 직접 연결되는 관계 찾기</span>
+          </span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </button>
+        <button id="startOrderBtn" class="start-card" type="button">
+          <span class="start-card-copy">
+            <strong>순서 배치</strong>
+            <span><b id="orderSetCount">0</b>개 흐름을 앞에서 뒤로 배열</span>
+          </span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </button>
+        <button id="startClassificationBtn" class="start-card" type="button">
+          <span class="start-card-copy">
+            <strong>분류 훈련</strong>
+            <span><b id="classificationCardCount">0</b>개 개념의 국가·영역 판별</span>
+          </span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </button>
+        <a class="start-card" href="timeline.html">
+          <span class="start-card-copy">
+            <strong>한국사 골격 연표</strong>
+            <span>삼국 병렬 비교와 왕 순서를 넓은 화면으로 보기</span>
+          </span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </a>
+        <button id="openRankingBtn" class="start-card home-ranking-card" type="button">
+          <span class="start-card-copy">
+            <strong>랭킹</strong>
+            <span>이 기기의 매칭·분류 기록 보기</span>
+          </span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </button>
+      </section>
+
+      <section class="home-summary">
+        <div><span id="totalPairs">0</span><small>선택한 개념 쌍</small></div>
+        <div><span id="weakPairs">0</span><small>약한 연결</small></div>
+        <div><span id="savedCount">0</span><small>학습 기록</small></div>
+      </section>
+
+      <details class="data-tools">
+        <summary>기록 관리</summary>
+        <section class="utility-panel" aria-label="기록 관리">
+          <button id="exportBtn" type="button">JSON 내보내기</button>
+          <label class="import-label">
+            JSON 가져오기
+            <input id="importInput" type="file" accept="application/json,.json">
+          </label>
+          <button id="resetBtn" class="danger-action" type="button">기록 초기화</button>
+          <div id="resultSummary" class="sr-only" aria-live="polite">아직 시작하지 않았습니다.</div>
+          <div id="weakList" class="sr-only">기록이 쌓이면 여기에 표시됩니다.</div>
+          <textarea id="jsonBox" class="sr-only" readonly spellcheck="false" aria-label="내보낸 학습 기록"></textarea>
+        </section>
+      </details>
+    </section>
+
+    <section id="rankingView" class="view ranking-page hidden" aria-labelledby="rankingPageTitle">
+      <header class="ranking-page-head">
+        <button id="rankingBackBtn" class="ghost" type="button" aria-label="홈으로 돌아가기" title="홈으로 돌아가기">←</button>
+        <div>
+          <p class="eyebrow">이 기기 기록</p>
+          <h1 id="rankingPageTitle">랭킹</h1>
+        </div>
+      </header>
+      <div class="ranking-tabs" role="tablist" aria-label="랭킹 종류">
+        <button class="ranking-tab active" type="button" role="tab" data-ranking-mode="match" aria-selected="true">매칭</button>
+        <button class="ranking-tab" type="button" role="tab" data-ranking-mode="classify" aria-selected="false">분류</button>
+      </div>
+      <section class="leaderboard ranking-page-board" aria-labelledby="rankingListTitle">
+        <h2 id="rankingListTitle">매칭 훈련 랭킹</h2>
+        <ol id="rankingPageList" class="leaderboard-list"></ol>
+      </section>
+    </section>
+
+    <section id="gameView" class="view game-view hidden">
+      <header class="topbar">
+        <section class="brand">
+          <button id="homeBtn" class="ghost" type="button" aria-label="홈으로 돌아가기" title="홈으로 돌아가기">←</button>
+          <div>
+            <p id="sessionLabel" class="eyebrow">카드 짝 맞추기</p>
+            <h1 id="sessionTitle">Concept Matching</h1>
+          </div>
+        </section>
+        <section class="hud" aria-label="현재 상태">
+          <div class="score-display">
+            <small>점수</small>
+            <strong id="score">0</strong>
+            <span><b id="combo">0</b> COMBO</span>
+          </div>
+          <div id="timerBox" class="timer-display">
+            <small id="timerLabel">남은 시간</small>
+            <strong id="timeLeft">01:00:00</strong>
+          </div>
+        </section>
+      </header>
+
+      <section class="statusline">
+        <strong id="feedback">시작할 기능을 선택하세요.</strong>
+        <span id="modeHint">범위와 우선순위는 홈에서 바꿀 수 있습니다.</span>
+      </section>
+
+      <section id="studyArea" class="study-area hidden">
+        <button id="studyCard" class="study-card" type="button">
+          <span id="studySide">앞면</span>
+          <strong id="studyTerm">개념</strong>
+          <small id="studyMeta">클릭해서 짝 확인</small>
+        </button>
+        <div class="study-actions">
+          <button id="flipBtn" type="button">짝 확인</button>
+          <button id="knowBtn" type="button" disabled>알았다</button>
+          <button id="weakBtn" type="button" disabled>다시 볼 카드</button>
+          <button id="nextStudyBtn" type="button" title="평가하지 않고 다음 카드로 이동">건너뛰기</button>
+        </div>
+      </section>
+
+      <section id="board" class="board hidden" aria-label="개념 카드"></section>
+
+      <section id="orderArea" class="order-area hidden" aria-labelledby="orderSetTitle">
+        <header class="order-round-head">
+          <div>
+            <span id="orderProgress">1 / 1</span>
+            <h2 id="orderSetTitle">역사 흐름</h2>
+          </div>
+          <button id="orderShuffleBtn" class="order-shuffle" type="button" title="다시 섞기" aria-label="순서 카드 다시 섞기">↻</button>
+        </header>
+        <div id="orderList" class="order-list" role="list" aria-label="순서 배치 카드"></div>
+        <p id="orderAnswer" class="order-answer hidden" aria-live="polite"></p>
+        <div class="order-actions">
+          <button id="orderRetryBtn" class="hidden" type="button">같은 흐름 다시 하기</button>
+          <button id="orderCheckBtn" type="button">순서 확인</button>
+          <button id="orderNextBtn" class="hidden" type="button">다음 흐름</button>
+        </div>
+      </section>
+
+      <section id="classificationArea" class="classification-area hidden" aria-labelledby="classificationTitle">
+        <header class="classification-head">
+          <span id="classificationProgress">1번째 개념</span>
+          <h2 id="classificationTitle">고대 국가 분류</h2>
+        </header>
+        <article id="classificationCard" class="classification-card">
+          <small id="classificationPrompt">어느 나라와 연결되는가?</small>
+          <strong id="classificationTerm">근초고왕</strong>
+          <span id="classificationMeta">고대 · S</span>
+        </article>
+        <div id="classificationTargets" class="classification-targets" aria-label="분류 선택"></div>
+        <p id="classificationNote" class="classification-note hidden" aria-live="polite"></p>
+      </section>
+
+      <section id="resultView" class="result-view hidden">
+        <p id="resultEyebrow" class="eyebrow">훈련 종료</p>
+        <h2 id="finalScore">0점</h2>
+        <div class="result-metrics">
+          <div><span id="finalMatched">0</span><small>맞힌 개수</small></div>
+          <div><span id="finalRank">-</span><small>내 순위</small></div>
+        </div>
+        <section class="leaderboard" aria-labelledby="leaderboardTitle">
+          <h3 id="leaderboardTitle">이 기기 랭킹</h3>
+          <ol id="leaderboardList" class="leaderboard-list"></ol>
+        </section>
+        <button id="retryBtn" type="button">다시하기</button>
+      </section>
+
+    </section>
+    <div id="appNotice" class="app-notice" role="status" aria-live="polite"></div>
+  </main>
+
+  <script src="pairs.js?v=7"></script>
+  <script src="orders.js?v=1"></script>
+  <script src="classifications.js?v=1"></script>
+  <script src="app.js?v=20"></script>
+</body>
+</html>
