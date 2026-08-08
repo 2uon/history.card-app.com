@@ -715,7 +715,7 @@ function startStudy() {
   els.timeLeft.textContent = "-";
   els.timerLabel.textContent = "제한 없음";
   els.timerBox.classList.remove("danger", "urgent");
-  els.feedback.textContent = "앞면을 보고 연결 개념을 떠올린 뒤 넘겨서 확인하세요.";
+  els.feedback.textContent = "개념을 보고 설명을 떠올린 뒤 카드를 넘겨 확인하세요.";
   els.modeHint.textContent = "알았다 / 다시 볼 카드 기록은 약한 연결에 반영됩니다.";
   renderStudyCard();
   updateHud();
@@ -726,16 +726,16 @@ function startStudy() {
 function renderStudyCard() {
   if (!state.studyQueue.length) state.studyQueue = shuffle(state.pool).slice();
   const pair = state.studyQueue[state.studyIndex % state.studyQueue.length];
-  const front = buildMatchClue(pair);
   els.studyCard.classList.toggle("revealed", state.studyFlipped);
-  els.studyCard.classList.toggle("clue-front", !state.studyFlipped);
-  els.studySide.textContent = state.studyFlipped ? "정답 연결" : "역사 단서";
-  els.studyTerm.textContent = state.studyFlipped ? `${pair.left} ↔ ${pair.right}` : front;
+  els.studyCard.classList.toggle("clue-front", false);
+  els.studyCard.classList.toggle("description-back", state.studyFlipped);
+  els.studySide.textContent = state.studyFlipped ? "설명" : "개념";
+  els.studyTerm.textContent = state.studyFlipped ? pair.explanation : pair.left;
   els.studyMeta.textContent = state.studyFlipped
-    ? pair.explanation
-    : "빈칸에 들어갈 핵심 개념을 떠올리세요.";
-  els.studyCard.setAttribute("aria-label", state.studyFlipped ? `${pair.left}와 ${pair.right}의 관계. ${pair.explanation}` : `${front}, 정답 확인하기`);
-  els.flipBtn.textContent = state.studyFlipped ? "문제 다시 보기" : "정답 확인";
+    ? `${pair.left} ↔ ${pair.right}`
+    : "연결되는 역사 설명을 떠올리세요.";
+  els.studyCard.setAttribute("aria-label", state.studyFlipped ? `${pair.left}의 설명. ${pair.explanation}` : `${pair.left}, 설명 보기`);
+  els.flipBtn.textContent = state.studyFlipped ? "개념 다시 보기" : "설명 보기";
   els.knowBtn.disabled = !state.studyFlipped;
   els.weakBtn.disabled = !state.studyFlipped;
 }

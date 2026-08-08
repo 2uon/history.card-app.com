@@ -917,6 +917,13 @@ body[data-theme="light"] .combo-badge.combo-level-4 { --combo-color: #a83f73; }
   line-height: 1.25;
 }
 
+.study-card.revealed.description-back strong {
+  max-width: 350px;
+  font-size: clamp(20px, 6.2vw, 28px);
+  line-height: 1.48;
+  text-align: left;
+}
+
 .study-card span, .study-card small {
   color: var(--muted);
 }
