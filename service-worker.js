@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanmatch-v26";
+const CACHE_NAME = "hanmatch-v27";
 const OFFLINE_PAGE = "./index.html";
 const APP_SHELL = [
   "./",
@@ -9,6 +9,9 @@ const APP_SHELL = [
   "./orders.js?v=1",
   "./classifications.js?v=1",
   "./app.js?v=20",
+  "./timeline.html",
+  "./timeline.css",
+  "./timeline.js",
   "./manifest.webmanifest?v=3",
   "./app-icon-v2.svg",
   "./app-icon-192.png",
