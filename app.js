@@ -538,7 +538,7 @@ function loadClassificationRecords() {
 }
 
 function getClassificationCardId(set, card) {
-  return `${set.id}::${card.term}`;
+  return `${set.id}::${card.id || card.term}`;
 }
 
 function sanitizeClassificationRecords(records) {
@@ -1175,8 +1175,8 @@ function startClassification() {
   els.classificationArea.classList.remove("hidden");
   els.timerLabel.textContent = "남은 시간";
   els.timerBox.classList.remove("danger", "urgent");
-  els.feedback.textContent = "개념이 속한 국가나 역사 영역을 고르세요.";
-  els.modeHint.textContent = "오답이면 정답 분류와 연결 근거가 바로 표시됩니다.";
+  els.feedback.textContent = "두 역사 단서를 함께 보고 정확한 대상을 고르세요.";
+  els.modeHint.textContent = "비슷한 왕·단체·사건 사이의 결정적 차이를 훈련합니다.";
   renderClassificationQuestion();
   updateHud();
   ensureAudioContext();
@@ -1198,6 +1198,7 @@ function getClassificationWeight(question) {
 }
 
 function buildClassificationClue(card) {
+  if (card.clue) return card.clue;
   const compactAnswer = [...card.answer].filter(char => !/\s/.test(char));
   const pattern = compactAnswer.map(char => escapeRegExp(char)).join("\\s*");
   return card.note.replace(new RegExp(pattern, "g"), "______");
@@ -1217,7 +1218,7 @@ function renderClassificationQuestion(playCue = false) {
   els.classificationTerm.textContent = card.term;
   els.classificationClue.textContent = buildClassificationClue(card);
   els.classificationMeta.textContent = `${set.era} · ${card.priority}`;
-  els.classificationCard.className = "classification-card";
+  els.classificationCard.className = `classification-card${card.clue ? " contextual" : ""}`;
   els.classificationNote.classList.add("hidden");
   els.classificationNote.textContent = "";
   els.classificationTargets.innerHTML = set.labels.map(label => (
