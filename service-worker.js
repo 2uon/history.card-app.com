@@ -1,4 +1,4 @@
-const CACHE_NAME = "hanmatch-v27";
+const CACHE_NAME = "hanmatch-v82";
 const OFFLINE_PAGE = "./index.html";
 const APP_SHELL = [
   "./",
@@ -9,9 +9,9 @@ const APP_SHELL = [
   "./orders.js?v=1",
   "./classifications.js?v=1",
   "./app.js?v=20",
-  "./timeline.html",
-  "./timeline.css",
-  "./timeline.js",
+  "./timeline.css?v=82",
+  "./timeline-data.js?v=82",
+  "./timeline.js?v=82",
   "./manifest.webmanifest?v=3",
   "./app-icon-v2.svg",
   "./app-icon-192.png",
@@ -40,7 +40,7 @@ self.addEventListener("fetch", event => {
     event.respondWith(
       fetch(request)
         .then(response => response.ok ? response : Promise.reject(new Error("Navigation failed")))
-        .catch(() => caches.match(OFFLINE_PAGE))
+        .catch(() => caches.match(request).then(cached => cached || caches.match(OFFLINE_PAGE)))
     );
     return;
   }

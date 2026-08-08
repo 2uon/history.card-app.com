@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7f8">
-  <meta name="description" content="한능검 시대 골격을 하나의 가로 흐름으로 보는 데스크톱 연표">
+  <meta name="description" content="한능검 핵심 왕과 사건을 하나의 가로 흐름으로 보는 한국사 연표">
   <title>한국사 골격 연표 | 한능검 매치</title>
   
-  <link rel="stylesheet" href="timeline.css">
+  <link rel="stylesheet" href="timeline.css?v=82">
 </head>
 <body>
   <main class="app-shell">
@@ -20,29 +20,30 @@
     </header>
 
     <section class="intro">
-      <div><p class="eyebrow">한능검 심화 2급 · 데스크톱 연표</p><h1>한국사를 한 줄로 이어 보기</h1><p class="intro-copy">국가별 행은 고정하고 시간이 왼쪽에서 오른쪽으로 흐릅니다. 삼국은 같은 세기를 세 행으로 비교하고, 이후 남북국·고려·조선·근현대까지 끊기지 않는 하나의 흐름으로 이어집니다.</p></div>
-      <div class="legend" aria-label="표시 기준"><span><i></i>핵심 사건</span><span><i class="gray"></i>왕 순서 보조</span></div>
+      <div><p class="eyebrow">한능검 심화 2급 · 핵심 연표</p><h1>왕을 중심으로 한국사를 <span class="no-break">이어 보기</span></h1><p class="intro-copy">왕의 계승이 가로 중심선이 되고, 시험에 연결할 정책·사건은 해당 왕 아래로 뻗습니다. 왕은 개별 노드로 표시하되 핵심 왕만 선명하게 강조하고, 삼국 이후에는 같은 행이 발해·후고구려·고려·조선으로 이어집니다.</p></div>
+          <div class="legend" aria-label="표시 기준"><span><i></i>핵심 왕</span><span><i class="gray"></i>일반 왕</span><span>└ 업적 가지</span><span><i class="conflict-dot"></i>전쟁·전투</span></div>
     </section>
 
     <div class="timeline-toolbar">
       <nav id="eraNav" class="era-nav" aria-label="시대 바로가기"></nav>
-      <div class="scroll-controls"><span class="scroll-hint">드래그 · Shift+휠로 좌우 이동</span><span id="currentEra" class="current-era" aria-live="polite">선사·고조선</span><button id="prevBtn" class="scroll-button" type="button" aria-label="이전 시대로 이동">‹</button><button id="nextBtn" class="scroll-button" type="button" aria-label="다음 시대로 이동">›</button></div>
+      <div class="scroll-controls"><span class="scroll-hint"><span class="desktop-hint">드래그 · Shift+휠로 좌우 이동</span><span class="mobile-hint">좌우로 밀어 이동</span></span><span id="currentEra" class="current-era" aria-live="polite">선사·고조선</span><button id="prevBtn" class="scroll-button" type="button" aria-label="이전 시대로 이동">‹</button><button id="nextBtn" class="scroll-button" type="button" aria-label="다음 시대로 이동">›</button></div>
     </div>
 
     <section class="timeline-frame" aria-label="한국사 가로 연표">
       <div class="timeline-grid">
         <div class="lane-labels" aria-hidden="true">
-          <div class="corner">흐름 / 시대</div><div class="lane-label flow"><span id="laneFlow">시대 흐름</span></div><div id="laneMainBox" class="lane-label"><span id="laneMain">고구려</span></div><div id="laneBranchBox" class="lane-label"><span id="laneBranch">백제</span></div><div id="laneSouthBox" class="lane-label"><span id="laneSouth">신라</span></div>
+          <div class="corner">시대 / 계통</div><div id="laneMainBox" class="lane-label"><span id="laneMain">고구려</span></div><div id="laneBranchBox" class="lane-label"><span id="laneBranch">신라</span></div><div id="laneSouthBox" class="lane-label"><span id="laneSouth">백제</span></div>
         </div>
         <div id="timelineViewport" class="timeline-viewport" tabindex="0" aria-label="좌우로 이동하는 한국사 연표"><div id="timelineTrack" class="timeline-track"></div></div>
       </div>
     </section>
     <div class="progress-shell" aria-hidden="true"><div id="progressBar" class="progress-bar"></div></div>
-    <div class="study-note"><span><strong>우선 골격:</strong> 4세기 백제 → 5세기 고구려 → 6세기 신라 → 7세기 통일 전쟁</span><span>회색 왕명은 순서 확인용, 색 테두리 카드는 직접 연결할 핵심입니다.</span></div>
+    <div class="study-note"><span><strong>읽는 순서:</strong> 모든 왕을 가로로 읽고, 핵심 왕 아래의 가지에서 업적을 확인합니다.</span><span>작은 회색 노드도 생략되지 않은 개별 왕입니다.</span></div>
 
-    <footer><p>현재 폴더의 「한능검 OCR 정리 노트」를 중심으로 구성하고, 국사편찬위원회 우리역사넷과 한국민족문화대백과사전의 시대 구분·왕대 정보를 대조했습니다.</p><p><a href="https://contents.history.go.kr/" target="_blank" rel="noreferrer">우리역사넷</a> · <a href="https://encykorea.aks.ac.kr/Article/E0026481" target="_blank" rel="noreferrer">삼국시대</a> · <a href="https://encykorea.aks.ac.kr/Article/E0003424" target="_blank" rel="noreferrer">고려</a></p></footer>
+    <footer><p>「한능검 OCR 정리 노트」를 중심으로 구성하고, 국사편찬위원회 우리역사넷과 한국민족문화대백과사전의 시대 구분·왕대 정보를 대조했습니다.</p><p><a href="https://contents.history.go.kr/" target="_blank" rel="noreferrer">우리역사넷</a> · <a href="https://encykorea.aks.ac.kr/Article/E0026481" target="_blank" rel="noreferrer">삼국시대</a> · <a href="https://encykorea.aks.ac.kr/Article/E0003424" target="_blank" rel="noreferrer">고려</a></p></footer>
   </main>
 
-  <script src="timeline.js"></script>
+  <script src="timeline-data.js?v=82"></script>
+  <script src="timeline.js?v=82"></script>
 </body>
 </html>
