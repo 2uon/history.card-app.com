@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=3">
   <link rel="icon" href="app-icon-v2.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=22">
+  <link rel="stylesheet" href="styles.css?v=23">
 </head>
 <body>
   <main class="app">
@@ -93,7 +93,7 @@
         <button id="startStudyBtn" class="start-card" type="button">
           <span class="start-card-copy">
             <strong>카드 학습</strong>
-            <span>개념과 연결어를 한 장씩 확인</span>
+            <span>개념·빈칸 문장으로 전체 관계 확인</span>
           </span>
           <span class="start-arrow" aria-hidden="true">›</span>
         </button>
@@ -107,14 +107,14 @@
         <button id="startOrderBtn" class="start-card" type="button">
           <span class="start-card-copy">
             <strong>순서 배치</strong>
-            <span><b id="orderSetCount">0</b>개 흐름을 앞에서 뒤로 배열</span>
+            <span><b id="orderSetCount">0</b>개 흐름을 시기 단서로 배열</span>
           </span>
           <span class="start-arrow" aria-hidden="true">›</span>
         </button>
         <button id="startClassificationBtn" class="start-card" type="button">
           <span class="start-card-copy">
             <strong>분류 훈련</strong>
-            <span><b id="classificationCardCount">0</b>개 개념의 국가·영역 판별</span>
+            <span><b id="classificationCardCount">0</b>개 문장 단서의 국가·영역 판별</span>
           </span>
           <span class="start-arrow" aria-hidden="true">›</span>
         </button>
@@ -242,6 +242,7 @@
         <article id="classificationCard" class="classification-card">
           <small id="classificationPrompt">어느 나라와 연결되는가?</small>
           <strong id="classificationTerm">근초고왕</strong>
+          <p id="classificationClue">이 개념을 설명하는 역사 문장</p>
           <span id="classificationMeta">고대 · S</span>
         </article>
         <div id="classificationTargets" class="classification-targets" aria-label="분류 선택"></div>
@@ -267,8 +268,8 @@
   </main>
 
   <script src="pairs.js?v=9"></script>
-  <script src="orders.js?v=1"></script>
+  <script src="orders.js?v=2"></script>
   <script src="classifications.js?v=1"></script>
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>

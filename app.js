@@ -123,6 +123,7 @@ const els = {
   classificationCard: document.getElementById("classificationCard"),
   classificationPrompt: document.getElementById("classificationPrompt"),
   classificationTerm: document.getElementById("classificationTerm"),
+  classificationClue: document.getElementById("classificationClue"),
   classificationMeta: document.getElementById("classificationMeta"),
   classificationTargets: document.getElementById("classificationTargets"),
   classificationNote: document.getElementById("classificationNote"),
@@ -749,15 +750,16 @@ function renderStudyCard() {
   if (!state.studyQueue.length) state.studyQueue = shuffle(state.pool).slice();
   const pair = state.studyQueue[state.studyIndex % state.studyQueue.length];
   const frontIsLeft = state.studyIndex % 2 === 0;
-  const front = frontIsLeft ? pair.left : pair.right;
-  const back = frontIsLeft ? pair.right : pair.left;
-  els.studySide.textContent = state.studyFlipped ? "뒷면" : "앞면";
-  els.studyTerm.textContent = state.studyFlipped ? back : front;
+  const front = frontIsLeft ? pair.left : buildMatchClue(pair);
+  els.studyCard.classList.toggle("revealed", state.studyFlipped);
+  els.studyCard.classList.toggle("clue-front", !state.studyFlipped && !frontIsLeft);
+  els.studySide.textContent = state.studyFlipped ? "정답 연결" : frontIsLeft ? "핵심 개념" : "역사 단서";
+  els.studyTerm.textContent = state.studyFlipped ? `${pair.left} ↔ ${pair.right}` : front;
   els.studyMeta.textContent = state.studyFlipped
-    ? `${pair.era} · ${pair.priority} · ${pair.explanation}`
-    : "클릭해서 짝 확인";
-  els.studyCard.setAttribute("aria-label", state.studyFlipped ? `${front}의 짝은 ${back}` : `${front}, 짝 확인하기`);
-  els.flipBtn.textContent = state.studyFlipped ? "앞면 보기" : "짝 확인";
+    ? pair.explanation
+    : frontIsLeft ? "연결되는 역사 단서와 근거 문장을 떠올리세요." : "빈칸에 들어갈 핵심 개념을 떠올리세요.";
+  els.studyCard.setAttribute("aria-label", state.studyFlipped ? `${pair.left}와 ${pair.right}의 관계. ${pair.explanation}` : `${front}, 정답 확인하기`);
+  els.flipBtn.textContent = state.studyFlipped ? "문제 다시 보기" : "정답 확인";
   els.knowBtn.disabled = !state.studyFlipped;
   els.weakBtn.disabled = !state.studyFlipped;
 }
@@ -780,13 +782,13 @@ function gradeStudy(knew) {
     record.streak += 1;
     state.score += 100;
     state.matched += 1;
-    els.feedback.textContent = `${pair.left} ↔ ${pair.right} 저장`;
+    els.feedback.textContent = `기억 완료 · ${pair.explanation}`;
   } else {
     record.wrong += 1;
     record.weak += 1;
     record.streak = 0;
     state.wrong += 1;
-    els.feedback.textContent = `${pair.left} ↔ ${pair.right} 다시 볼 카드로 표시`;
+    els.feedback.textContent = `다시 학습 · ${pair.explanation}`;
   }
   record.mastery = calculateMastery(record);
   saveRecords();
@@ -848,6 +850,7 @@ function prepareOrderRound() {
   const ordered = set.items.map((text, correctIndex) => ({
     id: `${set.id}-${correctIndex}`,
     text,
+    clue: set.clues?.[correctIndex] || "",
     correctIndex
   }));
   state.orderItems = shuffleAwayFromCorrect(ordered);
@@ -882,7 +885,8 @@ function renderOrderList() {
     return `<div class="order-item${selected ? " selected" : ""}${positionClass}" data-order-id="${escapeHtml(item.id)}" role="listitem">`
       + `<button class="order-drag-handle" type="button" data-order-drag aria-label="${escapeHtml(item.text)} 드래그하여 이동. 방향키로도 이동 가능" title="끌어서 순서 이동"${state.orderChecked ? " disabled" : ""}>`
       + `<span class="order-number" aria-hidden="true">${index + 1}</span><span class="order-grip" aria-hidden="true">⠿</span></button>`
-      + `<button class="order-card" type="button" data-order-action="select" aria-pressed="${selected}"${state.orderChecked ? " disabled" : ""}>${escapeHtml(item.text)}</button>`
+      + `<button class="order-card" type="button" data-order-action="select" aria-pressed="${selected}"${state.orderChecked ? " disabled" : ""}>`
+      + `<strong>${escapeHtml(item.text)}</strong>${item.clue ? `<small>${escapeHtml(item.clue)}</small>` : ""}</button>`
       + `<span class="order-move-controls">`
       + `<button type="button" data-order-action="up" aria-label="${escapeHtml(item.text)} 위로 이동" title="위로 이동"${index === 0 || state.orderChecked ? " disabled" : ""}>↑</button>`
       + `<button type="button" data-order-action="down" aria-label="${escapeHtml(item.text)} 아래로 이동" title="아래로 이동"${index === state.orderItems.length - 1 || state.orderChecked ? " disabled" : ""}>↓</button>`
@@ -1046,7 +1050,9 @@ function checkOrder() {
   }
   record.mastery = calculateOrderMastery(record);
   saveOrderRecords();
-  els.orderAnswer.innerHTML = `<strong>정답</strong><span>${set.items.map(escapeHtml).join(" → ")}</span><small>${escapeHtml(set.explanation)}</small>`;
+  els.orderAnswer.innerHTML = `<strong>정답 흐름</strong><ol>${set.items.map((item, index) => (
+    `<li><b>${index + 1}. ${escapeHtml(item)}</b>${set.clues?.[index] ? `<span>${escapeHtml(set.clues[index])}</span>` : ""}</li>`
+  )).join("")}</ol><small>${escapeHtml(set.explanation)}</small>`;
   els.orderAnswer.classList.remove("hidden");
   els.orderCheckBtn.classList.add("hidden");
   els.orderRetryBtn.classList.remove("hidden");
@@ -1134,6 +1140,12 @@ function getClassificationWeight(question) {
   return priority + weak + Math.random() * 8;
 }
 
+function buildClassificationClue(card) {
+  const compactAnswer = [...card.answer].filter(char => !/\s/.test(char));
+  const pattern = compactAnswer.map(char => escapeRegExp(char)).join("\\s*");
+  return card.note.replace(new RegExp(pattern, "g"), "______");
+}
+
 function renderClassificationQuestion() {
   cancelHint();
   if (!state.classificationQueue.length) state.classificationQueue = buildClassificationQueue();
@@ -1146,6 +1158,7 @@ function renderClassificationQuestion() {
   els.classificationTitle.textContent = set.title;
   els.classificationPrompt.textContent = set.prompt;
   els.classificationTerm.textContent = card.term;
+  els.classificationClue.textContent = buildClassificationClue(card);
   els.classificationMeta.textContent = `${set.era} · ${card.priority}`;
   els.classificationCard.className = "classification-card";
   els.classificationNote.classList.add("hidden");
@@ -1187,7 +1200,7 @@ function handleClassificationAnswer(event) {
     record.correct += 1;
     record.streak += 1;
     els.classificationCard.classList.add("correct");
-    els.feedback.textContent = `${card.term} → ${card.answer} +${points}점 +${bonusSeconds}초`;
+    els.feedback.textContent = `정답 · ${card.note} +${points}점 · +${bonusSeconds}초`;
     playMatchSound(isCombo ? "combo" : "correct");
     playImpact(isCombo ? "combo" : "correct", points, bonusSeconds);
   } else {
