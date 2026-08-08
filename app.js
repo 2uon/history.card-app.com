@@ -298,6 +298,26 @@ function playMatchSound(type) {
     playTone(440, 0.035, "triangle", 0, 0.055);
     return;
   }
+  if (type === "open") {
+    playTone(392, 0.05, "triangle", 0, 0.09);
+    playTone(523.25, 0.07, "triangle", 0.045, 0.08);
+    return;
+  }
+  if (type === "flip") {
+    playTone(493.88, 0.045, "sine", 0, 0.075);
+    playTone(659.25, 0.055, "sine", 0.04, 0.065);
+    return;
+  }
+  if (type === "next") {
+    playTone(587.33, 0.045, "triangle", 0, 0.07);
+    return;
+  }
+  if (type === "shuffle") {
+    playTone(466.16, 0.035, "triangle", 0, 0.06);
+    playTone(554.37, 0.035, "triangle", 0.035, 0.055);
+    playTone(622.25, 0.045, "triangle", 0.07, 0.05);
+    return;
+  }
   if (type === "combo") {
     playTone(659.3, 0.06, "triangle", 0, 0.2);
     playTone(783.99, 0.06, "triangle", 0.06, 0.18);
@@ -744,6 +764,8 @@ function startStudy() {
   els.modeHint.textContent = "알았다 / 다시 볼 카드 기록은 약한 연결에 반영됩니다.";
   renderStudyCard();
   updateHud();
+  ensureAudioContext();
+  playMatchSound("open");
 }
 
 function renderStudyCard() {
@@ -767,6 +789,7 @@ function renderStudyCard() {
 function flipStudyCard() {
   if (state.feature !== "study") return;
   state.studyFlipped = !state.studyFlipped;
+  playMatchSound(state.studyFlipped ? "flip" : "select");
   renderStudyCard();
 }
 
@@ -783,20 +806,25 @@ function gradeStudy(knew) {
     state.score += 100;
     state.matched += 1;
     els.feedback.textContent = `기억 완료 · ${pair.explanation}`;
+    playMatchSound("correct");
+    vibrate(18);
   } else {
     record.wrong += 1;
     record.weak += 1;
     record.streak = 0;
     state.wrong += 1;
     els.feedback.textContent = `다시 학습 · ${pair.explanation}`;
+    playMatchSound("wrong");
+    vibrate([28, 22, 28]);
   }
   record.mastery = calculateMastery(record);
   saveRecords();
   renderWeakList();
-  nextStudyCard();
+  nextStudyCard(false);
 }
 
-function nextStudyCard() {
+function nextStudyCard(playCue = true) {
+  if (playCue) playMatchSound("next");
   state.studyIndex += 1;
   state.studyFlipped = false;
   renderStudyCard();
@@ -834,6 +862,8 @@ function startOrder() {
   els.modeHint.textContent = "손잡이를 끌거나 화살표·카드 두 장 선택으로 순서를 바꾸세요.";
   prepareOrderRound();
   updateHud();
+  ensureAudioContext();
+  playMatchSound("open");
 }
 
 function getOrderWeight(set) {
@@ -1071,12 +1101,14 @@ function calculateOrderMastery(record) {
 
 function retryOrderRound() {
   if (state.feature !== "order") return;
+  playMatchSound("shuffle");
   prepareOrderRound();
   els.feedback.textContent = "같은 흐름을 다시 배열하세요.";
 }
 
 function nextOrderRound() {
   if (state.feature !== "order") return;
+  playMatchSound("next");
   state.orderIndex = (state.orderIndex + 1) % state.orderQueue.length;
   prepareOrderRound();
   els.feedback.textContent = "가장 앞선 사건부터 차례대로 배열하세요.";
@@ -1124,6 +1156,7 @@ function startClassification() {
   renderClassificationQuestion();
   updateHud();
   ensureAudioContext();
+  playMatchSound("open");
   state.timerId = setInterval(tickTimer, 10);
 }
 
@@ -1146,7 +1179,7 @@ function buildClassificationClue(card) {
   return card.note.replace(new RegExp(pattern, "g"), "______");
 }
 
-function renderClassificationQuestion() {
+function renderClassificationQuestion(playCue = false) {
   cancelHint();
   if (!state.classificationQueue.length) state.classificationQueue = buildClassificationQueue();
   state.classificationCurrent = state.classificationQueue.shift();
@@ -1166,6 +1199,7 @@ function renderClassificationQuestion() {
   els.classificationTargets.innerHTML = set.labels.map(label => (
     `<button type="button" data-classification-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`
   )).join("");
+  if (playCue) playMatchSound("next");
   scheduleHint("classify");
 }
 
@@ -1225,7 +1259,7 @@ function handleClassificationAnswer(event) {
   updateHud();
   updateHomeSummary();
   window.setTimeout(() => {
-    if (state.feature === "classify" && !state.finished && state.timeLeft > 0) renderClassificationQuestion();
+    if (state.feature === "classify" && !state.finished && state.timeLeft > 0) renderClassificationQuestion(true);
   }, correct ? 430 : 760);
 }
 
