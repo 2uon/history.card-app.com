@@ -754,6 +754,31 @@ button:active { transform: scale(.98); }
   animation: wrongImpact .34s ease both;
 }
 
+.card.hint-target {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  animation: hintPulse 1.1s ease-in-out infinite;
+}
+
+.card.hint-target::after {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  content: "힌트";
+  font-size: 9px;
+  font-weight: 900;
+}
+
+@keyframes hintPulse {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 24%, transparent); }
+}
+
 @keyframes correctImpact {
   0% { transform: scale(.97); }
   45% { transform: scale(1.075); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent), 0 0 28px color-mix(in srgb, var(--good) 28%, transparent); }
@@ -980,6 +1005,12 @@ button:active { transform: scale(.98); }
   color: var(--bad);
 }
 
+.order-item.hint-target .order-card {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
 .order-move-controls {
   display: grid;
   grid-template-columns: repeat(2, 34px);
@@ -1133,6 +1164,14 @@ button:active { transform: scale(.98); }
   color: var(--bad);
   background: color-mix(in srgb, var(--bad) 9%, var(--panel));
   opacity: 1;
+}
+
+.classification-targets .hint-eliminated {
+  border-style: dashed;
+  color: var(--muted);
+  background: var(--panel-2);
+  opacity: .46;
+  text-decoration: line-through;
 }
 
 .classification-note {

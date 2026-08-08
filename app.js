@@ -14,6 +14,7 @@ const COMBO_BONUS_SECONDS = 5;
 const COMBO_WINDOW_MS = 3000;
 const CLASSIFY_BONUS_SECONDS = 1;
 const CLASSIFY_COMBO_BONUS_SECONDS = 2;
+const HINT_DELAY_MS = 5000;
 const DIRECT_RELATION_KEYS = new Set(PAIRS.map(pair => relationKey(pair.left, pair.right)));
 const CORE_STUDY_SETS = buildCoreStudySets();
 const CORE_STUDY_SET_MAP = new Map(CORE_STUDY_SETS.map(set => [set.id, set]));
@@ -58,7 +59,8 @@ const state = {
   pickStartedAt: 0,
   locked: false,
   finished: false,
-  timerId: null
+  timerId: null,
+  hintTimerId: null
 };
 
 const els = {
@@ -832,6 +834,7 @@ function getOrderWeight(set) {
 }
 
 function prepareOrderRound() {
+  cancelHint();
   cancelOrderDrag();
   const set = state.orderQueue[state.orderIndex % state.orderQueue.length];
   const ordered = set.items.map((text, correctIndex) => ({
@@ -851,6 +854,7 @@ function prepareOrderRound() {
   els.orderNextBtn.classList.add("hidden");
   els.orderShuffleBtn.disabled = false;
   renderOrderList();
+  scheduleHint("order");
 }
 
 function shuffleAwayFromCorrect(items) {
@@ -1005,6 +1009,7 @@ function handleOrderDragKeydown(event) {
 
 function checkOrder() {
   if (state.feature !== "order" || state.orderChecked) return;
+  cancelHint();
   cancelOrderDrag();
   const set = state.orderQueue[state.orderIndex % state.orderQueue.length];
   const correct = state.orderItems.every((item, index) => item.correctIndex === index);
@@ -1121,6 +1126,7 @@ function getClassificationWeight(question) {
 }
 
 function renderClassificationQuestion() {
+  cancelHint();
   if (!state.classificationQueue.length) state.classificationQueue = buildClassificationQueue();
   state.classificationCurrent = state.classificationQueue.shift();
   state.classificationCount += 1;
@@ -1138,11 +1144,13 @@ function renderClassificationQuestion() {
   els.classificationTargets.innerHTML = set.labels.map(label => (
     `<button type="button" data-classification-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`
   )).join("");
+  scheduleHint("classify");
 }
 
 function handleClassificationAnswer(event) {
   const button = event.target.closest("button[data-classification-label]");
   if (!button || state.feature !== "classify" || state.locked || state.timeLeft <= 0) return;
+  cancelHint();
   state.locked = true;
   const { set, card } = state.classificationCurrent;
   const selected = button.dataset.classificationLabel;
@@ -1242,6 +1250,7 @@ function startMatch() {
   els.feedback.textContent = "8장 안에는 항상 최소 1쌍이 있습니다.";
   els.modeHint.textContent = "맞추면 빈자리에 새 카드가 들어오고, 3초 안 연속 성공은 콤보입니다.";
   renderBoard();
+  scheduleHint("match");
   updateHud();
   ensureAudioContext();
   state.timerId = setInterval(tickTimer, 10);
@@ -1346,12 +1355,18 @@ function renderBoardSlots(indexes) {
 function selectCard(cardEl) {
   if (state.feature !== "match" || state.locked || state.timeLeft <= 0) return;
   if (cardEl.classList.contains("selected")) {
+    cancelHint();
     cardEl.classList.remove("selected");
     state.selected = state.selected.filter(el => el !== cardEl);
     if (!state.selected.length) state.pickStartedAt = performance.now();
+    scheduleHint("match");
     return;
   }
-  if (state.selected.length === 0) state.pickStartedAt = performance.now();
+  if (state.selected.length === 0) {
+    cancelHint();
+    state.pickStartedAt = performance.now();
+    scheduleHint("match");
+  }
   playMatchSound("select");
   cardEl.classList.add("selected");
   state.selected.push(cardEl);
@@ -1359,6 +1374,7 @@ function selectCard(cardEl) {
 }
 
 function checkSelection() {
+  cancelHint();
   state.locked = true;
   const [first, second] = state.selected;
   const elapsed = performance.now() - state.pickStartedAt;
@@ -1417,7 +1433,77 @@ function refillMatchedCards(uidList) {
   state.locked = false;
   state.pickStartedAt = performance.now();
   renderBoardSlots(changedIndexes);
+  scheduleHint("match");
   updateHud();
+}
+
+function scheduleHint(feature = state.feature) {
+  cancelHint();
+  if (!["match", "order", "classify"].includes(feature)) return;
+  state.hintTimerId = window.setTimeout(() => {
+    state.hintTimerId = null;
+    if (state.feature !== feature) return;
+    if (feature === "order" && state.orderChecked) return;
+    if (["match", "classify"].includes(feature) && (state.finished || state.locked || state.timeLeft <= 0)) return;
+    if (feature === "match") showMatchHint();
+    if (feature === "order") showOrderHint();
+    if (feature === "classify") showClassificationHint();
+  }, getHintDelayMs());
+}
+
+function cancelHint() {
+  if (state.hintTimerId) window.clearTimeout(state.hintTimerId);
+  state.hintTimerId = null;
+  els.board?.querySelectorAll(".hint-target").forEach(card => card.classList.remove("hint-target"));
+  els.orderList?.querySelectorAll(".hint-target").forEach(item => item.classList.remove("hint-target"));
+  els.classificationTargets?.querySelectorAll(".hint-eliminated").forEach(button => {
+    button.classList.remove("hint-eliminated");
+    button.disabled = false;
+    button.removeAttribute("aria-label");
+  });
+}
+
+function showMatchHint() {
+  const pairs = new Map();
+  for (const card of state.boardCards.filter(Boolean)) {
+    if (!pairs.has(card.pairId)) pairs.set(card.pairId, []);
+    pairs.get(card.pairId).push(card);
+  }
+  const playablePairs = [...pairs.values()].filter(cards => (
+    cards.some(card => card.side === "left") && cards.some(card => card.side === "right")
+  ));
+  const selectedPairId = state.selected[0]?.dataset.pairId;
+  const playable = playablePairs.find(cards => cards[0]?.pairId === selectedPairId) || playablePairs[0];
+  if (!playable) return;
+  const selectedSide = state.selected[0]?.dataset.side;
+  const target = selectedPairId
+    ? playable.find(card => card.pairId === selectedPairId && card.side !== selectedSide)
+    : playable[0];
+  const hintCard = target || playable[0];
+  const element = els.board.querySelector(`[data-uid="${CSS.escape(hintCard.uid)}"]`);
+  element?.classList.add("hint-target");
+  els.feedback.textContent = `힌트: ‘${hintCard.text}’와 직접 연결되는 카드를 찾아보세요.`;
+}
+
+function showOrderHint() {
+  const mismatchIndex = state.orderItems.findIndex((item, index) => item.correctIndex !== index);
+  if (mismatchIndex < 0) return;
+  const target = state.orderItems.find(item => item.correctIndex === mismatchIndex);
+  const row = target ? els.orderList.querySelector(`[data-order-id="${CSS.escape(target.id)}"]`) : null;
+  row?.classList.add("hint-target");
+  els.feedback.textContent = `힌트: ${mismatchIndex + 1}번째 칸 → ‘${target.text}’`;
+}
+
+function showClassificationHint() {
+  const { card } = state.classificationCurrent || {};
+  if (!card) return;
+  const wrongTarget = [...els.classificationTargets.querySelectorAll("button")]
+    .find(button => button.dataset.classificationLabel !== card.answer);
+  if (!wrongTarget) return;
+  wrongTarget.disabled = true;
+  wrongTarget.classList.add("hint-eliminated");
+  wrongTarget.setAttribute("aria-label", `${wrongTarget.textContent}, 힌트로 제외된 선택지`);
+  els.feedback.textContent = `힌트: 제외할 선택지는 ‘${wrongTarget.textContent}’입니다.`;
 }
 
 function getReplacements(remaining, count) {
@@ -1657,6 +1743,13 @@ function retryCurrentFeature() {
 function stopTimer() {
   if (state.timerId) clearInterval(state.timerId);
   state.timerId = null;
+  cancelHint();
+}
+
+function getHintDelayMs() {
+  const testDelay = Number(new URLSearchParams(location.search).get("testHintMs"));
+  if (Number.isFinite(testDelay) && testDelay >= 20) return testDelay;
+  return HINT_DELAY_MS;
 }
 
 function updateRecord(pairId, correct, elapsed, bucket) {
