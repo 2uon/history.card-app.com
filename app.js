@@ -1398,6 +1398,16 @@ function selectCard(cardEl) {
     scheduleHint("match");
     return;
   }
+  if (state.selected.length === 1 && state.selected[0].dataset.side === cardEl.dataset.side) {
+    cancelHint();
+    state.selected[0].classList.remove("selected");
+    state.selected = [cardEl];
+    cardEl.classList.add("selected");
+    state.pickStartedAt = performance.now();
+    playMatchSound("select");
+    scheduleHint("match");
+    return;
+  }
   if (state.selected.length === 0) {
     cancelHint();
     state.pickStartedAt = performance.now();
