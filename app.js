@@ -1486,7 +1486,7 @@ function showMatchHint() {
   const hintCard = target || playable[0];
   const element = els.board.querySelector(`[data-uid="${CSS.escape(hintCard.uid)}"]`);
   element?.classList.add("hint-target");
-  els.feedback.textContent = `힌트: ‘${hintCard.text}’와 직접 연결되는 카드를 찾아보세요.`;
+  els.feedback.textContent = `힌트 카드: ‘${hintCard.text}’. 직접 연결되는 카드를 찾아보세요.`;
 }
 
 function showOrderHint() {
