@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=3">
   <link rel="icon" href="app-icon-v2.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
   <main class="app">
@@ -118,7 +118,7 @@
           </span>
           <span class="start-arrow" aria-hidden="true">›</span>
         </button>
-        <a class="start-card" href="timeline.html">
+        <a class="start-card" href="timeline">
           <span class="start-card-copy">
             <strong>한국사 골격 연표</strong>
             <span>삼국 병렬 비교와 왕 순서를 넓은 화면으로 보기</span>
@@ -187,7 +187,7 @@
           <div class="score-display">
             <small>점수</small>
             <strong id="score">0</strong>
-            <span><b id="combo">0</b> COMBO</span>
+            <span id="comboBadge" class="combo-badge" aria-hidden="true"><b id="combo">0</b> COMBO</span>
           </div>
           <div id="timerBox" class="timer-display">
             <small id="timerLabel">남은 시간</small>
@@ -269,6 +269,6 @@
   <script src="pairs.js?v=9"></script>
   <script src="orders.js?v=1"></script>
   <script src="classifications.js?v=1"></script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>

@@ -12,9 +12,11 @@ const START_MS = START_SECONDS * 1000;
 const MATCH_BONUS_SECONDS = 3;
 const COMBO_BONUS_SECONDS = 5;
 const COMBO_WINDOW_MS = 3000;
+const WRONG_TIME_PENALTY_SECONDS = 1;
 const CLASSIFY_BONUS_SECONDS = 1;
 const CLASSIFY_COMBO_BONUS_SECONDS = 2;
 const HINT_DELAY_MS = 5000;
+const FINAL_ANSWER_DELAY_MS = 2000;
 const DIRECT_RELATION_KEYS = new Set(PAIRS.map(pair => relationKey(pair.left, pair.right)));
 const CORE_STUDY_SETS = buildCoreStudySets();
 const CORE_STUDY_SET_MAP = new Map(CORE_STUDY_SETS.map(set => [set.id, set]));
@@ -100,6 +102,7 @@ const els = {
   sessionTitle: document.getElementById("sessionTitle"),
   score: document.getElementById("score"),
   combo: document.getElementById("combo"),
+  comboBadge: document.getElementById("comboBadge"),
   timeLeft: document.getElementById("timeLeft"),
   timerLabel: document.getElementById("timerLabel"),
   feedback: document.getElementById("feedback"),
@@ -412,7 +415,9 @@ function playImpact(kind, points = 0, seconds = 0) {
   retriggerClass(els.score.closest(".score-display"), "score-hit", 340);
   if (kind === "combo") retriggerClass(els.score.closest(".score-display"), "combo-hit", 440);
   if (seconds > 0) retriggerClass(els.timerBox, "time-gain", 460);
-  showScorePop(`${points > 0 ? "+" : ""}${points}점${seconds ? `  +${seconds}초` : ""}`, isWrong ? "bad" : kind);
+  if (seconds < 0) retriggerClass(els.timerBox, "time-loss", 460);
+  const timeEffect = seconds ? `  ${seconds > 0 ? "+" : ""}${seconds}초` : "";
+  showScorePop(`${points > 0 ? "+" : ""}${points}점${timeEffect}`, isWrong ? "bad" : kind);
   vibrate(isWrong ? [45, 35, 45] : kind === "combo" ? [18, 28, 24] : 22);
 }
 
@@ -671,6 +676,7 @@ function hasPlayableMatchPool(pool) {
 function showHome() {
   stopTimer();
   cancelOrderDrag();
+  state.matchSessionId += 1;
   state.feature = "home";
   els.homeView.classList.remove("hidden");
   els.rankingView.classList.add("hidden");
@@ -687,6 +693,7 @@ function showGame() {
 
 function showRanking(mode = "match") {
   stopTimer();
+  state.matchSessionId += 1;
   state.feature = "ranking";
   els.homeView.classList.add("hidden");
   els.gameView.classList.add("hidden");
@@ -1071,6 +1078,7 @@ function nextOrderRound() {
 
 function startClassification() {
   stopTimer();
+  state.matchSessionId += 1;
   state.classificationPool = getClassificationPool();
   const cardCount = state.classificationPool.reduce((sum, set) => sum + set.cards.length, 0);
   if (!cardCount) {
@@ -1183,6 +1191,7 @@ function handleClassificationAnswer(event) {
     playMatchSound(isCombo ? "combo" : "correct");
     playImpact(isCombo ? "combo" : "correct", points, bonusSeconds);
   } else {
+    applyWrongTimePenalty();
     state.combo = 0;
     state.lastMatchAt = 0;
     state.wrong += 1;
@@ -1191,9 +1200,9 @@ function handleClassificationAnswer(event) {
     record.streak = 0;
     button.classList.add("wrong-target");
     els.classificationCard.classList.add("wrong");
-    els.feedback.textContent = `정답은 ${card.answer}입니다. -50점`;
+    els.feedback.textContent = `정답은 ${card.answer}입니다. -50점 · -1초`;
     playMatchSound("wrong");
-    playImpact("wrong", -50);
+    playImpact("wrong", -50, -WRONG_TIME_PENALTY_SECONDS);
   }
 
   record.mastery = calculateClassificationMastery(record, elapsed);
@@ -1422,7 +1431,8 @@ function checkSelection() {
     setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid], matchSessionId), 220);
   } else {
     playMatchSound("wrong");
-    playImpact("wrong", -50);
+    applyWrongTimePenalty();
+    playImpact("wrong", -50, -WRONG_TIME_PENALTY_SECONDS);
     state.combo = 0;
     state.lastMatchAt = 0;
     state.wrong += 1;
@@ -1436,7 +1446,7 @@ function checkSelection() {
       .filter((item, index, items) => item && items.findIndex(candidate => candidate?.id === item.id) === index)
       .map(item => `${item.left} ↔ ${item.right}`)
       .join(" / ");
-    els.feedback.textContent = `오답 · 정답 연결: ${corrections} · -50점`;
+    els.feedback.textContent = `오답 · 정답 연결: ${corrections} · -50점 · -1초`;
     setTimeout(() => refillMatchedCards([first.dataset.uid, second.dataset.uid], matchSessionId), 360);
   }
 
@@ -1640,6 +1650,11 @@ function clearSelection() {
   updateHud();
 }
 
+function applyWrongTimePenalty() {
+  state.endAt -= WRONG_TIME_PENALTY_SECONDS * 1000;
+  state.timeLeft = Math.max(0, state.endAt - performance.now());
+}
+
 function tickTimer() {
   state.timeLeft = Math.max(0, state.endAt - performance.now());
   if (state.timeLeft > 0) {
@@ -1663,11 +1678,38 @@ function tickTimer() {
 
 function finishMatch() {
   if (state.feature !== "match" || state.finished) return;
+  const sessionId = state.matchSessionId;
   state.finished = true;
   matchWarningSecond = -1;
   stopTimer();
   state.locked = true;
+  revealFinalMatchAnswer();
+  updateHud();
+  window.setTimeout(() => showMatchResult(sessionId), FINAL_ANSWER_DELAY_MS);
+}
+
+function revealFinalMatchAnswer() {
+  const selectedPairId = state.selected[0]?.dataset.pairId;
+  const pairCounts = state.boardCards.filter(Boolean).reduce((counts, card) => {
+    counts[card.pairId] = (counts[card.pairId] || 0) + 1;
+    return counts;
+  }, {});
+  const fallbackPairId = Object.keys(pairCounts).find(pairId => pairCounts[pairId] >= 2);
+  const pairId = selectedPairId || fallbackPairId || state.boardCards.find(Boolean)?.pairId;
+  const pair = PAIRS.find(item => item.id === pairId);
+
+  for (const card of els.board.querySelectorAll(".card")) {
+    card.disabled = true;
+    card.classList.remove("selected", "bad", "good", "hint-target");
+    card.classList.toggle("timeout-answer", card.dataset.pairId === pairId);
+  }
   state.selected = [];
+  els.feedback.textContent = pair ? `시간 종료 · 마지막 정답: ${pair.left} ↔ ${pair.right}` : "시간 종료";
+  els.modeHint.textContent = pair?.explanation || "마지막 정답을 확인하세요.";
+}
+
+function showMatchResult(sessionId) {
+  if (state.feature !== "match" || !state.finished || sessionId !== state.matchSessionId) return;
   els.board.classList.add("hidden");
   els.resultView.classList.remove("hidden");
   els.resultEyebrow.textContent = "매칭 훈련 종료";
@@ -1684,10 +1726,33 @@ function finishMatch() {
 
 function finishClassification() {
   if (state.feature !== "classify" || state.finished) return;
+  const sessionId = state.matchSessionId;
   state.finished = true;
   matchWarningSecond = -1;
   stopTimer();
   state.locked = true;
+  revealFinalClassificationAnswer();
+  updateHud();
+  window.setTimeout(() => showClassificationResult(sessionId), FINAL_ANSWER_DELAY_MS);
+}
+
+function revealFinalClassificationAnswer() {
+  const current = state.classificationCurrent;
+  if (!current) return;
+  for (const target of els.classificationTargets.querySelectorAll("button")) {
+    target.disabled = true;
+    target.classList.toggle("correct-target", target.dataset.classificationLabel === current.card.answer);
+  }
+  els.classificationCard.classList.remove("wrong");
+  els.classificationCard.classList.add("correct");
+  els.classificationNote.innerHTML = `<strong>${escapeHtml(current.card.answer)}</strong><span>${escapeHtml(current.card.note)}</span>`;
+  els.classificationNote.classList.remove("hidden");
+  els.feedback.textContent = `시간 종료 · 마지막 정답: ${current.card.answer}`;
+  els.modeHint.textContent = current.card.note;
+}
+
+function showClassificationResult(sessionId) {
+  if (state.feature !== "classify" || !state.finished || sessionId !== state.matchSessionId) return;
   els.classificationArea.classList.add("hidden");
   els.resultView.classList.remove("hidden");
   els.resultEyebrow.textContent = "분류 훈련 종료";
@@ -1836,6 +1901,12 @@ function sameEraDensity(pair) {
 function updateHud() {
   els.score.textContent = state.score;
   els.combo.textContent = state.combo;
+  const comboVisible = state.combo >= 2;
+  const comboLevel = state.combo >= 7 ? 4 : state.combo >= 5 ? 3 : state.combo >= 3 ? 2 : 1;
+  els.comboBadge.classList.toggle("visible", comboVisible);
+  els.comboBadge.classList.remove("combo-level-1", "combo-level-2", "combo-level-3", "combo-level-4");
+  if (comboVisible) els.comboBadge.classList.add(`combo-level-${comboLevel}`);
+  els.comboBadge.setAttribute("aria-hidden", String(!comboVisible));
   els.timeLeft.textContent = ["study", "order"].includes(state.feature) ? "∞" : formatTime(state.timeLeft);
   const timedFeature = ["match", "classify"].includes(state.feature);
   els.timerBox.classList.toggle("danger", timedFeature && state.timeLeft <= 10000);

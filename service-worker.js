@@ -1,14 +1,14 @@
-const CACHE_NAME = "hanmatch-v91";
+const CACHE_NAME = "hanmatch-v94";
 const OFFLINE_PAGE = "./index.html";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./timeline.html",
-  "./styles.css?v=20",
+  "./styles.css?v=22",
   "./pairs.js?v=9",
   "./orders.js?v=1",
   "./classifications.js?v=1",
-  "./app.js?v=28",
+  "./app.js?v=30",
   "./timeline.css?v=82",
   "./timeline-data.js?v=82",
   "./timeline.js?v=82",
@@ -37,10 +37,13 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    const offlineTarget = new URL(request.url).pathname.replace(/\/$/, "").endsWith("/timeline")
+      ? "./timeline.html"
+      : OFFLINE_PAGE;
     event.respondWith(
       fetch(request)
         .then(response => response.ok ? response : Promise.reject(new Error("Navigation failed")))
-        .catch(() => caches.match(request).then(cached => cached || caches.match(OFFLINE_PAGE)))
+        .catch(() => caches.match(request).then(cached => cached || caches.match(offlineTarget)))
     );
     return;
   }

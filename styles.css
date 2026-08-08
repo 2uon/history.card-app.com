@@ -448,27 +448,47 @@ button:active { transform: scale(.98); }
   100% { transform: scale(1); }
 }
 
-.score-display span {
+.combo-badge {
+  --combo-color: var(--good);
   display: inline-flex;
   gap: 6px;
   align-items: center;
   margin-top: 4px;
   padding: 4px 10px;
-  border: 1px solid color-mix(in srgb, var(--good) 48%, transparent);
+  border: 1px solid color-mix(in srgb, var(--combo-color) 52%, transparent);
   border-radius: 999px;
-  color: var(--good);
-  background: color-mix(in srgb, var(--good) 8%, transparent);
+  color: var(--combo-color);
+  background: color-mix(in srgb, var(--combo-color) 9%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--combo-color) 0%, transparent);
   font-size: 13px;
   font-weight: 850;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px) scale(.84);
+  transition: color .2s ease, border-color .2s ease, background .2s ease,
+    box-shadow .2s ease, opacity .16s ease, transform .2s cubic-bezier(.2,.9,.2,1), visibility .16s;
 }
 
-.score-display.combo-hit span {
+.combo-badge.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--combo-color) 22%, transparent);
+}
+
+.combo-badge.combo-level-1 { --combo-color: var(--good); }
+.combo-badge.combo-level-2 { --combo-color: var(--accent); }
+.combo-badge.combo-level-3 { --combo-color: var(--blue); }
+.combo-badge.combo-level-4 { --combo-color: #d783ad; }
+body[data-theme="light"] .combo-badge.combo-level-4 { --combo-color: #a83f73; }
+
+.score-display.combo-hit .combo-badge.visible {
   animation: comboHit .4s cubic-bezier(.2,.9,.2,1);
 }
 
 @keyframes comboHit {
   0% { transform: scale(.82); }
-  55% { transform: scale(1.16); box-shadow: 0 0 18px color-mix(in srgb, var(--good) 45%, transparent); }
+  55% { transform: scale(1.16); box-shadow: 0 0 20px color-mix(in srgb, var(--combo-color) 48%, transparent); }
   100% { transform: scale(1); }
 }
 
@@ -510,10 +530,21 @@ button:active { transform: scale(.98); }
   animation: timeGain .44s cubic-bezier(.2,.9,.2,1);
 }
 
+.timer-display.time-loss {
+  animation: timeLoss .44s cubic-bezier(.2,.9,.2,1);
+}
+
 @keyframes timeGain {
   0% { transform: scale(1); }
   45% { transform: scale(1.08); border-color: var(--good); box-shadow: 0 0 20px color-mix(in srgb, var(--good) 32%, transparent); }
   100% { transform: scale(1); }
+}
+
+@keyframes timeLoss {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(-3px); border-color: var(--bad); box-shadow: 0 0 20px color-mix(in srgb, var(--bad) 34%, transparent); }
+  55% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
 }
 
 @keyframes urgencyPulse {
@@ -779,6 +810,20 @@ button:active { transform: scale(.98); }
   border-color: var(--bad);
   background: rgba(255, 93, 104, .12);
   animation: wrongImpact .34s ease both;
+}
+
+.card.timeout-answer,
+.card.timeout-answer:disabled {
+  border-color: var(--good);
+  background: color-mix(in srgb, var(--good) 13%, var(--panel));
+  box-shadow: inset 0 0 0 1px var(--good), 0 0 20px color-mix(in srgb, var(--good) 24%, transparent);
+  opacity: 1;
+  animation: finalAnswerPulse .72s ease-in-out infinite alternate;
+}
+
+@keyframes finalAnswerPulse {
+  from { transform: scale(.985); }
+  to { transform: scale(1); }
 }
 
 .card.hint-target {
