@@ -7,6 +7,16 @@ try {
 const THEME_KEY = "historyMatchingTheme.v1";
 const { LANES, COLORS, COLUMNS } = window.TIMELINE_DATA;
 
+initTimelineBackNavigation();
+
+function initTimelineBackNavigation() {
+  if (!history.state?.hanneungTimelineGuard) {
+    history.replaceState({ hanneungTimelineBase: true }, "", location.href);
+    history.pushState({ hanneungTimelineGuard: true }, "", location.href);
+  }
+  window.addEventListener("popstate", () => location.replace("./"), { once: true });
+}
+
 const track = document.getElementById("timelineTrack");
 const viewport = document.getElementById("timelineViewport");
 const progress = document.getElementById("progressBar");

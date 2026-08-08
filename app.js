@@ -151,7 +151,7 @@ const els = {
 
 els.startStudyBtn.addEventListener("click", startStudy);
 els.openRankingBtn.addEventListener("click", () => showRanking("match"));
-els.rankingBackBtn.addEventListener("click", showHome);
+els.rankingBackBtn.addEventListener("click", navigateHome);
 for (const tab of els.rankingTabs) {
   tab.addEventListener("click", () => renderRankingPage(tab.dataset.rankingMode));
 }
@@ -160,7 +160,7 @@ els.sfxToggle.addEventListener("click", toggleSfx);
 els.startMatchBtn.addEventListener("click", startMatch);
 els.startOrderBtn.addEventListener("click", startOrder);
 els.startClassificationBtn.addEventListener("click", startClassification);
-document.getElementById("homeBtn").addEventListener("click", showHome);
+document.getElementById("homeBtn").addEventListener("click", navigateHome);
 document.getElementById("retryBtn").addEventListener("click", retryCurrentFeature);
 els.studyCard.addEventListener("click", flipStudyCard);
 els.flipBtn.addEventListener("click", flipStudyCard);
@@ -185,6 +185,7 @@ for (const select of [els.era, els.priority, els.mode, els.difficulty]) {
 }
 
 initTheme();
+initNavigationHistory();
 initCurriculumSets();
 updateHomeSummary();
 renderWeakList();
@@ -694,11 +695,32 @@ function hasPlayableMatchPool(pool) {
   return pickCompatiblePairs(pool, MIN_MATCH_PAIRS, new Set()).length === MIN_MATCH_PAIRS;
 }
 
+function initNavigationHistory() {
+  history.replaceState({ ...(history.state || {}), hanneungView: "home" }, "", location.href);
+  window.addEventListener("popstate", showHome);
+}
+
+function pushNavigationState(view) {
+  if (history.state?.hanneungView === view) return;
+  history.pushState({ hanneungView: view }, "", location.href);
+}
+
+function navigateHome() {
+  if (history.state?.hanneungView && history.state.hanneungView !== "home") {
+    history.back();
+    return;
+  }
+  showHome();
+}
+
 function showHome() {
   stopTimer();
   cancelOrderDrag();
   state.matchSessionId += 1;
   state.feature = "home";
+  if (history.state?.hanneungView !== "home") {
+    history.replaceState({ ...(history.state || {}), hanneungView: "home" }, "", location.href);
+  }
   els.homeView.classList.remove("hidden");
   els.rankingView.classList.add("hidden");
   els.gameView.classList.add("hidden");
@@ -706,6 +728,7 @@ function showHome() {
 }
 
 function showGame() {
+  pushNavigationState(state.feature);
   els.homeView.classList.add("hidden");
   els.rankingView.classList.add("hidden");
   els.gameView.classList.remove("hidden");
@@ -716,6 +739,7 @@ function showRanking(mode = "match") {
   stopTimer();
   state.matchSessionId += 1;
   state.feature = "ranking";
+  pushNavigationState("ranking");
   els.homeView.classList.add("hidden");
   els.gameView.classList.add("hidden");
   els.rankingView.classList.remove("hidden");
